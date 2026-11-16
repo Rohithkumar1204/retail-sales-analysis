@@ -1,0 +1,117 @@
+
+# RETAIL SALES ANALYSIS - ERROR HANDLED VERSION
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# 1. Load Dataset
+try:
+    url = "https://raw.githubusercontent.com/plotly/datasets/master/superstore.csv"
+    df = pd.read_csv(url, encoding="latin1")
+    print("Dataset loaded successfully!")
+
+except Exception as e:
+    print("Online dataset loading failed:", e)
+    from google.colab import files
+    uploaded = files.upload()
+    filename = next(iter(uploaded))
+    df = pd.read_csv(filename, encoding="latin1")
+
+# 2. Clean Data
+df.columns = df.columns.str.strip()
+df.drop_duplicates(inplace=True)
+
+df["Sales"] = pd.to_numeric(df["Sales"], errors="coerce")
+df["Profit"] = pd.to_numeric(df["Profit"], errors="coerce")
+df.dropna(subset=["Sales", "Profit"], inplace=True)
+
+df["Order Date"] = pd.to_datetime(
+    df["Order Date"], errors="coerce"
+)
+df.dropna(subset=["Order Date"], inplace=True)
+
+print("\nDATASET PREVIEW")
+print(df.head())
+
+# 3. Statistical Analysis
+print("\nDATASET INFORMATION")
+print(df.info())
+
+print("\nSALES SUMMARY")
+print(df[["Sales", "Profit"]].describe())
+
+print("\nTotal Sales:", round(df["Sales"].sum(), 2))
+print("Total Profit:", round(df["Profit"].sum(), 2))
+print("Average Sales:", round(df["Sales"].mean(), 2))
+print("Total Orders:", df["Order ID"].nunique())
+
+# 4. Group Analysis
+category_sales = df.groupby("Category")["Sales"].sum()
+category_profit = df.groupby("Category")["Profit"].sum()
+
+df["Month"] = df["Order Date"].dt.to_period("M").astype(str)
+monthly_sales = df.groupby("Month")["Sales"].sum()
+
+region_sales = df.groupby("Region")["Sales"].sum()
+
+top_products = (
+    df.groupby("Product Name")["Sales"]
+    .sum()
+    .nlargest(10)
+)
+
+# 5. Visualizations
+fig, axes = plt.subplots(2, 3, figsize=(17, 11))
+
+monthly_sales.plot(ax=axes[0, 0], marker="o")
+axes[0, 0].set_title("Monthly Sales Trend")
+axes[0, 0].tick_params(axis="x", rotation=90)
+
+category_sales.plot(kind="bar", ax=axes[0, 1])
+axes[0, 1].set_title("Category-wise Sales")
+
+top_products.sort_values().plot(
+    kind="barh", ax=axes[0, 2]
+)
+axes[0, 2].set_title("Top 10 Products")
+
+region_sales.plot(kind="bar", ax=axes[1, 0])
+axes[1, 0].set_title("Region-wise Sales")
+
+category_profit.plot(kind="bar", ax=axes[1, 1])
+axes[1, 1].set_title("Category-wise Profit")
+
+category_sales.plot(
+    kind="pie", autopct="%1.1f%%",
+    ax=axes[1, 2]
+)
+axes[1, 2].set_title("Sales Distribution")
+axes[1, 2].set_ylabel("")
+
+plt.tight_layout()
+plt.show()
+
+# 6. Correlation Heatmap
+plt.figure(figsize=(8, 5))
+sns.heatmap(
+    df.select_dtypes(include=np.number).corr(),
+    annot=True, cmap="coolwarm"
+)
+plt.title("Correlation Heatmap")
+plt.show()
+
+# 7. Final Findings
+print("\nPROJECT FINDINGS")
+print("Highest Sales Category:", category_sales.idxmax())
+print("Highest Profit Category:", category_profit.idxmax())
+print("Best Sales Region:", region_sales.idxmax())
+print("Top Selling Product:", top_products.idxmax())
+
+# 8. Save Results
+df.to_csv("cleaned_retail_sales.csv", index=False)
+category_sales.to_csv("category_sales.csv")
+category_profit.to_csv("category_profit.csv")
+
+print("\nPROJECT COMPLETED SUCCESSFULLY!")
